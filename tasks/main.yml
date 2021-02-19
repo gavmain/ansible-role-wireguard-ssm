@@ -1,0 +1,37 @@
+---
+# tasks file for wireguard-ssm
+- name: Install AWS SSM RPM dependencies
+  yum:
+    name: "{{ wireguard_ssm_rpms }}"
+
+- name: Install AWS SSM Python dependencies
+  pip:
+    name: "{{ wireguard_ssm_py_pkgs }}"
+
+- name: Gather EC2 facts
+  amazon.aws.ec2_metadata_facts:
+
+- name: Register 'wg showconf wg0'
+  command: "wg showconf wg0"
+  register: __wg_showconf
+  changed_when: false
+
+- name: private_key fact
+  set_fact:
+    __pri_key: "{{ __wg_showconf.stdout | regex_findall('PrivateKey = (.*)') | first }}"
+
+- name: generate public_key
+  command: "wg pubkey"
+  args:
+    stdin: "{{ __pri_key }}"
+  register: __pub_key
+  changed_when: false
+  check_mode: no
+
+- name: Store regional WireGuard public key
+  community.aws.aws_ssm_parameter_store:
+    name: "{{ wireguard_ssm_base_path }}/{{ ansible_ec2_placement_availability_zone }}/public_key"
+    description: "Public key for the {{ ansible_ec2_placement_availability_zone }} region"
+    region: "{{ ansible_ec2_placement_region }}"
+    value: "{{ __pub_key.stdout }}"
+    string_type: "String"
