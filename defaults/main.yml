@@ -1,0 +1,10 @@
+---
+# defaults file for wireguard-ssm
+wireguard_ssm_rpms:
+- python-pip
+
+wireguard_ssm_py_pkgs:
+  - boto3
+  - botocore
+
+wireguard_ssm_base_path: "/wireguard"
